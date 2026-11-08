@@ -1,4 +1,5 @@
 // Reserva de estoque do catálogo (dados sintéticos da demonstração).
+// Saldos e reservas ficam em memória; a persistência é feita pelo registro injetado no construtor.
 
 export interface Reserva {
   id: string;
