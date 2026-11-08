@@ -19,6 +19,9 @@ export class Estoque {
   constructor(private readonly registro: RegistroDeReservas) {}
 
   abastecer(produtoId: string, quantidade: number): void {
+    if (!Number.isInteger(quantidade) || quantidade <= 0) {
+      throw new Error("quantidade deve ser um inteiro positivo");
+    }
     this.disponivel.set(produtoId, (this.disponivel.get(produtoId) ?? 0) + quantidade);
   }
 
@@ -28,11 +31,18 @@ export class Estoque {
 
   /** Reserva a quantidade pedida, se houver saldo. Devolve null sem saldo. */
   async reservar(produtoId: string, quantidade: number): Promise<Reserva | null> {
-    const saldo = this.saldo(produtoId);
-    if (saldo < quantidade) return null;
+    if (!Number.isInteger(quantidade) || quantidade <= 0) {
+      throw new Error("quantidade deve ser um inteiro positivo");
+    }
+    if (this.saldo(produtoId) < quantidade) return null;
     const reserva: Reserva = { id: `r${++this.seq}`, produtoId, quantidade };
-    await this.registro.gravar(reserva);
-    this.disponivel.set(produtoId, saldo - quantidade);
+    this.disponivel.set(produtoId, this.saldo(produtoId) - quantidade);
+    try {
+      await this.registro.gravar(reserva);
+    } catch (e) {
+      this.disponivel.set(produtoId, this.saldo(produtoId) + quantidade);
+      throw e;
+    }
     this.reservas.set(reserva.id, reserva);
     return reserva;
   }
@@ -41,6 +51,7 @@ export class Estoque {
   liberar(reservaId: string): void {
     const reserva = this.reservas.get(reservaId);
     if (!reserva) return;
+    this.reservas.delete(reservaId);
     this.abastecer(reserva.produtoId, reserva.quantidade);
   }
 }
